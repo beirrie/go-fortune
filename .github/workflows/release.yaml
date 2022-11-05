@@ -1,0 +1,88 @@
+name: Release and deploy Go-Fortune
+
+on:
+  push:
+    branches:
+    - 'v[0-9]+\.[0-9]+'
+
+jobs:
+  release-and-deploy:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '#NORUN')"
+
+    steps:
+    - name: Echo the branch
+      run: echo "current branch - ${{ github.ref_name }}"
+
+    - name: Checkout the branch
+      uses: actions/checkout@v3
+      with:
+        ref: ${{ github.ref_name }}
+
+    - name: Create a release
+      uses: ncipollo/release-action@v1.11.1
+      with:
+        tag: ${{ github.ref_name }}
+        token: ${{ secrets.GH_TOKEN }}
+    
+    - name: Deploy to railway
+      uses: devtomio/action-railway@v1.1.4
+      with:
+        railway_token: ${{ secrets.RAILWAY_TOKEN }}
+
+    - name: Send custom JSON data to Slack workflow
+      id: slack
+      uses: slackapi/slack-github-action@v1.23.0
+      with:
+        # For posting a rich message using Block Kit
+        payload: |
+          {
+          	"blocks": [
+          		{
+          			"type": "header",
+          			"text": {
+          				"type": "plain_text",
+          				"text": "DipSA55 CI/CD Assignment Submission",
+          				"emoji": true
+          			}
+          		},
+          		{
+          			"type": "section",
+          			"fields": [
+          				{
+          					"type": "mrkdwn",
+          					"text": "*Name:*\nLiaw Bei An"
+          				},
+          				{
+          					"type": "mrkdwn",
+          					"text": "*Matriculation:*\nA0256070L"
+          				},
+          				{
+          					"type": "mrkdwn",
+          					"text": "*Email:*\nbei@u.nus.edu"
+          				},
+          				{
+          					"type": "mrkdwn",
+          					"text": "*Repository:*\n<${{ github.repositoryUrl }}|${{ github.repositoryUrl }}>"
+          				}
+          			]
+          		},
+          		{
+          			"type": "section",
+          			"text": {
+          				"type": "mrkdwn",
+          				"text": "*Deployment:*\n<${{ RAILWAY_STATIC_URL }}|${{ RAILWAY_STATIC_URL }}>"
+          			}
+          		},
+          		{
+          			"type": "section",
+          			"text": {
+          				"type": "mrkdwn",
+          				"text": "<${{ RAILWAY_STATIC_URL }}|Open Application>"
+          			}
+          		}
+          	]
+          }          
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
