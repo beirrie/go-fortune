@@ -3,7 +3,7 @@ name: Release and deploy Go-Fortune
 on:
   push:
     branches:
-    - 'v[0-9]+\.[0-9]+'
+      - 'v[0-9]+\.[0-9]+'
 
 jobs:
   release-and-deploy:
@@ -13,23 +13,34 @@ jobs:
     steps:
     - name: Echo the branch
       run: echo "current branch - ${{ github.ref_name }}"
-
+    
     - name: Checkout the branch
       uses: actions/checkout@v3
       with:
         ref: ${{ github.ref_name }}
-
+    
     - name: Create a release
       uses: ncipollo/release-action@v1.11.1
       with:
         tag: ${{ github.ref_name }}
         token: ${{ secrets.GH_TOKEN }}
-    
-    - name: Deploy to railway
-      uses: devtomio/action-railway@v1.1.4
-      with:
-        railway_token: ${{ secrets.RAILWAY_TOKEN }}
 
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 16
+            
+    - name: Install packages
+      run: yarn install --frozen-lockfile
+
+    - name: Install Railway
+      run: npm i -g @railway/cli
+
+    - name: Deploy
+      run: railway up
+      env:
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        
     - name: Send custom JSON data to Slack workflow
       id: slack
       uses: slackapi/slack-github-action@v1.23.0
@@ -71,18 +82,18 @@ jobs:
           			"type": "section",
           			"text": {
           				"type": "mrkdwn",
-          				"text": "*Deployment:*\n<${{ RAILWAY_STATIC_URL }}|${{ RAILWAY_STATIC_URL }}>"
+          				"text": "*Deployment:*\n<${{ secrets.DEPLOYMENT_URL }}|${{ secrets.DEPLOYMENT_URL }}>"
           			}
           		},
           		{
           			"type": "section",
           			"text": {
           				"type": "mrkdwn",
-          				"text": "<${{ RAILWAY_STATIC_URL }}|Open Application>"
+          				"text": "<${{ secrets.DEPLOYMENT_URL }}|Open Application>"
           			}
           		}
           	]
-          }          
+          }
       env:
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
